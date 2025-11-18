@@ -1,20 +1,22 @@
 {
   "version": 2,
-  "public": true,
   "builds": [
     {
       "src": "api/index.py",
       "use": "@vercel/python"
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.py"
+      "src": "/api/(.*)",
+      "dest": "/api/index.py"
     },
     {
-      "source": "/(.*)",
-      "destination": "/frontend/$1"
+      "src": "/(.*)",
+      "dest": "/frontend/$1",
+      "headers": {
+        "cache-control": "s-maxage=31536000, stale-while-revalidate"
+      }
     }
   ]
 }
