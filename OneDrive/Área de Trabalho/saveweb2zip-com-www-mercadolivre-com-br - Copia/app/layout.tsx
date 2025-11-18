@@ -14,6 +14,8 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
+        <meta charSet="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="preconnect" href="https://sdk.mercadopago.com" />
         <link rel="preconnect" href="https://www.google-analytics.com" />
         <link rel="preconnect" href="https://www.google.com" />
@@ -22,7 +24,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://stats.g.doubleclick.net" />
         <link rel="preconnect" href="https://www.google.com.br" />
       </head>
-      <body>{children}</body>
+      <body style={{ margin: 0, padding: 0 }}>{children}</body>
     </html>
   )
 }

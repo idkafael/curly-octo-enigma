@@ -8,6 +8,7 @@ interface IndexContentProps {
 
 export default function IndexContent({ htmlContent }: IndexContentProps) {
   const [bodyContent, setBodyContent] = useState<string>('')
+  const [headContent, setHeadContent] = useState<string>('')
 
   useEffect(() => {
     if (!htmlContent) {
@@ -30,29 +31,84 @@ export default function IndexContent({ htmlContent }: IndexContentProps) {
       const body = doc.body?.innerHTML || ''
       setBodyContent(body)
       
-      // Pegar scripts do head que precisam ser executados
-      const headScripts = Array.from(doc.head.querySelectorAll('script'))
+      // Extrair todo o conteúdo do head (CSS, links, meta tags, etc.)
+      const headElements = Array.from(doc.head.children)
+      const headHTML = headElements.map(el => el.outerHTML).join('\n')
+      setHeadContent(headHTML)
       
-      // Executar scripts do head
-      headScripts.forEach(script => {
+      // Aplicar elementos do head dinamicamente
+      headElements.forEach(element => {
+        const tagName = element.tagName.toLowerCase()
+        
+        // Ignorar elementos que já existem
+        if (tagName === 'title') return // Next.js já tem title
+        
         try {
-          if (script.src) {
-            const newScript = document.createElement('script')
-            newScript.src = script.src
-            newScript.async = script.async
-            newScript.defer = script.defer
-            if (!document.head.querySelector(`script[src="${script.src}"]`)) {
-              document.head.appendChild(newScript)
+          if (tagName === 'style') {
+            // Adicionar estilos inline
+            const style = document.createElement('style')
+            style.innerHTML = element.innerHTML
+            if (!document.head.querySelector(`style[data-injected="true"]`)) {
+              style.setAttribute('data-injected', 'true')
+              document.head.appendChild(style)
             }
-          } else if (script.innerHTML) {
-            const newScript = document.createElement('script')
-            newScript.innerHTML = script.innerHTML
-            if (!document.head.querySelector(`script:not([src])`)) {
-              document.head.appendChild(newScript)
+          } else if (tagName === 'link') {
+            // Adicionar links (CSS, fonts, etc.)
+            const link = document.createElement('link')
+            const rel = element.getAttribute('rel')
+            const href = element.getAttribute('href')
+            const as = element.getAttribute('as')
+            const type = element.getAttribute('type')
+            
+            if (rel) link.rel = rel
+            if (href) link.href = href
+            if (as) link.setAttribute('as', as)
+            if (type) link.type = type
+            
+            // Verificar se já existe
+            const existingLink = document.head.querySelector(`link[href="${href}"]`)
+            if (!existingLink) {
+              document.head.appendChild(link)
+            }
+          } else if (tagName === 'script') {
+            // Adicionar scripts
+            const src = element.getAttribute('src')
+            if (src) {
+              const script = document.createElement('script')
+              script.src = src
+              script.async = element.hasAttribute('async')
+              script.defer = element.hasAttribute('defer')
+              const nonce = element.getAttribute('nonce')
+              if (nonce) script.setAttribute('nonce', nonce)
+              
+              if (!document.head.querySelector(`script[src="${src}"]`)) {
+                document.head.appendChild(script)
+              }
+            } else if (element.innerHTML) {
+              const script = document.createElement('script')
+              script.innerHTML = element.innerHTML
+              const nonce = element.getAttribute('nonce')
+              if (nonce) script.setAttribute('nonce', nonce)
+              document.head.appendChild(script)
+            }
+          } else if (tagName === 'meta') {
+            // Adicionar meta tags
+            const meta = document.createElement('meta')
+            Array.from(element.attributes).forEach(attr => {
+              meta.setAttribute(attr.name, attr.value)
+            })
+            
+            const name = element.getAttribute('name') || element.getAttribute('property')
+            const existingMeta = name 
+              ? document.head.querySelector(`meta[name="${name}"], meta[property="${name}"]`)
+              : null
+            
+            if (!existingMeta) {
+              document.head.appendChild(meta)
             }
           }
-        } catch (scriptError) {
-          console.error('Error loading script:', scriptError)
+        } catch (error) {
+          console.error(`Error adding ${tagName}:`, error)
         }
       })
     } catch (error) {
@@ -97,7 +153,13 @@ export default function IndexContent({ htmlContent }: IndexContentProps) {
   }
 
   return (
-    <div dangerouslySetInnerHTML={{ __html: bodyContent }} />
+    <>
+      {/* Injetar conteúdo do head */}
+      {headContent && (
+        <div dangerouslySetInnerHTML={{ __html: headContent }} style={{ display: 'none' }} />
+      )}
+      {/* Renderizar conteúdo do body */}
+      <div dangerouslySetInnerHTML={{ __html: bodyContent }} />
+    </>
   )
 }
-
